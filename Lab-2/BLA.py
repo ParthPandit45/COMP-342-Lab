@@ -5,64 +5,90 @@ import time
 WIN_WIDTH, WIN_HEIGHT = 900, 550
 plot_buffer = []
 
-def generate_bresenham_points(xs, ys, xe, ye):
-    dx, dy = abs(xe - xs), abs(ye - ys)
-    sx, sy = (1 if xs < xe else -1), (1 if ys < ye else -1)
-    x, y = xs, ys
-    err = dx - dy
 
-    i = 0
-    while True:
-        print(f"[{i:03}]  px=({x:4},{y:4})   err={err:5}")
-        yield x, y
-        if x == xe and y == ye: break
+def bresenham_line(x0, y0, x1, y1):
+    """Bresenham line algorithm supporting all slopes."""
+    dx = abs(x1 - x0)
+    dy = abs(y1 - y0)
+    x, y = x0, y0
 
-        e2 = err * 2
-        if e2 > -dy: err -= dy; x += sx
-        if e2 <  dx: err += dx; y += sy
-        i += 1
+    sx = 1 if x1 >= x0 else -1
+    sy = 1 if y1 >= y0 else -1
+
+    # Determine whether slope <1 or >=1
+    if dx > dy:  # |m| < 1
+        p = 2 * dy - dx
+        for i in range(dx + 1):
+            print(f"[{i:03}] pixel=({x:3},{y:3})  p={p:3}")
+            yield x, y
+            x += sx
+            if p >= 0:
+                y += sy
+                p += 2 * (dy - dx)
+            else:
+                p += 2 * dy
+    else:  # |m| >= 1
+        p = 2 * dx - dy
+        for i in range(dy + 1):
+            print(f"[{i:03}] pixel=({x:3},{y:3})  p={p:3}")
+            yield x, y
+            y += sy
+            if p >= 0:
+                x += sx
+                p += 2 * (dx - dy)
+            else:
+                p += 2 * dx
 
 
 def render_pixels():
     glClear(GL_COLOR_BUFFER_BIT)
     glPointSize(6)
+
     glBegin(GL_POINTS)
-    glColor3f(0.2, 0.8, 1.0)      # distinguish from DDA
+    glColor3f(0.9, 0.3, 0.6)  # Pinkish
     for px, py in plot_buffer:
         glVertex2i(px, py)
     glEnd()
 
 
 def setup_projection():
-    glMatrixMode(GL_PROJECTION); glLoadIdentity()
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
     glOrtho(0, WIN_WIDTH, 0, WIN_HEIGHT, -1, 1)
-    glMatrixMode(GL_MODELVIEW); glLoadIdentity()
-    glClearColor(0.07, 0.07, 0.11, 1)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glClearColor(0.08, 0.08, 0.10, 1)
 
 
 def run():
     global plot_buffer
 
-    if not glfw.init(): raise RuntimeError("GLFW init failed")
-    window = glfw.create_window(WIN_WIDTH, WIN_HEIGHT, "Bresenham Visualizer", None, None)
-    if not window: glfw.terminate(); raise RuntimeError("Window create failed")
+    if not glfw.init():
+        raise RuntimeError("GLFW init failed")
+    window = glfw.create_window(WIN_WIDTH, WIN_HEIGHT, "Bresenham Line", None, None)
+    if not window:
+        glfw.terminate()
+        raise RuntimeError("Window creation failed")
 
     glfw.make_context_current(window)
     setup_projection()
 
-    print("\n### BRESENHAM LOG ###")
-    print("Idx |   px(x,y)   | err")
-    print("-----------------------------")
+    print("\n### BRESENHAM LINE LOG ###")
+    print("Idx | pixel (x,y) | decision parameter p")
 
-    stream = generate_bresenham_points(80, 90, 820, 430)
-    last_t = time.time()
+    stream = bresenham_line(80, 90, 820, 430)
+    last = time.time()
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
-        if time.time() - last_t >= 0.006:
-            try:  plot_buffer.append(next(stream))
-            except StopIteration: pass
-            last_t = time.time()
+
+        if time.time() - last >= 0.004:  # faster animation
+            try:
+                px, py = next(stream)
+                plot_buffer.append((px, py))
+            except StopIteration:
+                pass
+            last = time.time()
 
         render_pixels()
         glfw.swap_buffers(window)
