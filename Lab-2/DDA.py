@@ -6,38 +6,24 @@ WIN_WIDTH, WIN_HEIGHT = 900, 550
 plot_buffer = []
 
 
-def bresenham_line(x0, y0, x1, y1):
-    """Bresenham line algorithm supporting all slopes."""
-    dx = abs(x1 - x0)
-    dy = abs(y1 - y0)
-    x, y = x0, y0
+def dda_line(x0, y0, x1, y1):
+    """DDA line algorithm supporting all slopes."""
+    dx = x1 - x0
+    dy = y1 - y0
 
-    sx = 1 if x1 >= x0 else -1
-    sy = 1 if y1 >= y0 else -1
+    steps = int(max(abs(dx), abs(dy)))
 
-    # Determine whether slope <1 or >=1
-    if dx > dy:  # |m| < 1
-        p = 2 * dy - dx
-        for i in range(dx + 1):
-            print(f"[{i:03}] pixel=({x:3},{y:3})  p={p:3}")
-            yield x, y
-            x += sx
-            if p >= 0:
-                y += sy
-                p += 2 * (dy - dx)
-            else:
-                p += 2 * dy
-    else:  # |m| >= 1
-        p = 2 * dx - dy
-        for i in range(dy + 1):
-            print(f"[{i:03}] pixel=({x:3},{y:3})  p={p:3}")
-            yield x, y
-            y += sy
-            if p >= 0:
-                x += sx
-                p += 2 * (dx - dy)
-            else:
-                p += 2 * dx
+    x_inc = dx / steps
+    y_inc = dy / steps
+
+    x = x0
+    y = y0
+
+    for i in range(steps + 1):
+        print(f"[{i:03}] pixel=({round(x):3},{round(y):3})  x={x:.2f} y={y:.2f}")
+        yield round(x), round(y)
+        x += x_inc
+        y += y_inc
 
 
 def render_pixels():
@@ -45,7 +31,7 @@ def render_pixels():
     glPointSize(6)
 
     glBegin(GL_POINTS)
-    glColor3f(0.9, 0.3, 0.6)  # Pinkish
+    glColor3f(0.3, 0.8, 1.0)  # Cyan-ish for DDA
     for px, py in plot_buffer:
         glVertex2i(px, py)
     glEnd()
@@ -65,7 +51,7 @@ def run():
 
     if not glfw.init():
         raise RuntimeError("GLFW init failed")
-    window = glfw.create_window(WIN_WIDTH, WIN_HEIGHT, "Bresenham Line", None, None)
+    window = glfw.create_window(WIN_WIDTH, WIN_HEIGHT, "DDA Line", None, None)
     if not window:
         glfw.terminate()
         raise RuntimeError("Window creation failed")
@@ -73,16 +59,16 @@ def run():
     glfw.make_context_current(window)
     setup_projection()
 
-    print("\n### BRESENHAM LINE LOG ###")
-    print("Idx | pixel (x,y) | decision parameter p")
+    print("\n### DDA LINE LOG ###")
+    print("Idx | pixel (x,y) | float (x,y) values")
 
-    stream = bresenham_line(80, 90, 820, 430)
+    stream = dda_line(80, 90, 820, 430)
     last = time.time()
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
 
-        if time.time() - last >= 0.004:  # faster animation
+        if time.time() - last >= 0.004:  # smooth animation
             try:
                 px, py = next(stream)
                 plot_buffer.append((px, py))
