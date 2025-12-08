@@ -1,81 +1,35 @@
-import glfw
+import glfw, time
 from OpenGL.GL import *
 import numpy as np
-import time
 
 WIN_W, WIN_H = 800, 600
 
-def draw_square(vertices):
-    glBegin(GL_QUADS)
-    glColor3f(1.0, 0.4, 0.0)   # Orange
-    for v in vertices.T:
-        glVertex2f(v[0], v[1])
+def draw_square(v):
+    glBegin(GL_QUADS); glColor3f(1,0.4,0)
+    for p in v.T: glVertex2f(p[0],p[1])
     glEnd()
 
 def main():
-    if not glfw.init():
-        return
+    if not glfw.init(): return
+    win=glfw.create_window(WIN_W,WIN_H,"2D Scaling Homogeneous",None,None)
+    if not win: glfw.terminate(); return
+    glfw.make_context_current(win)
+    glViewport(0,0,WIN_W,WIN_H); glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(-1,1,-1,1,-1,1); glMatrixMode(GL_MODELVIEW)
 
-    window = glfw.create_window(WIN_W, WIN_H, "2D Scaling Homogeneous", None, None)
-    if not window:
-        glfw.terminate()
-        return
+    square = np.array([[-0.2,0.2,0.2,-0.2],[0.2,0.2,-0.2,-0.2],[1,1,1,1]],float)
+    sx, sy = 1.002, 1.002
+    S = np.array([[sx,0,0],[0,sy,0],[0,0,1]])
 
-    glfw.make_context_current(window)
+    print("\n=== INITIAL COORDINATES ===")
+    for i in range(4): print(f"V{i+1}: ({square[0,i]:.3f},{square[1,i]:.3f})")
+    print("\n=== SCALING MATRIX ===\n", S,"\nAnimation running...\n")
 
-    glViewport(0, 0, WIN_W, WIN_H)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    glOrtho(-1, 1, -1, 1, -1, 1)
-    glMatrixMode(GL_MODELVIEW)
-
-    # Initial vertices (homogeneous)
-    square_vertices = np.array([
-        [-0.2,  0.2,  0.2, -0.2],
-        [ 0.2,  0.2, -0.2, -0.2],
-        [ 1.0,  1.0,  1.0,  1.0]
-    ], dtype=float)
-
-    # Scaling factors (modify if needed)
-    sx = 1.002    # Slightly >1 for smooth expansion
-    sy = 1.002
-
-    # Scaling matrix
-    scaling_matrix = np.array([
-        [sx,  0,  0],
-        [0,  sy,  0],
-        [0,   0,  1]
-    ], dtype=float)
-
-    # -----------------------------------------
-    # PRINT ONLY INITIAL VALUES
-    # -----------------------------------------
-    print("\n=== INITIAL COORDINATES (x,y) ===")
-    for i in range(4):
-        print(f"Vertex {i+1}: ({square_vertices[0, i]:.3f}, {square_vertices[1, i]:.3f})")
-
-    print("\n=== INITIAL SCALING MATRIX ===")
-    print(scaling_matrix)
-    print("\nAnimation running...\n")
-    # -----------------------------------------
-
-    # Animation loop
-    while not glfw.window_should_close(window):
-        glClear(GL_COLOR_BUFFER_BIT)
-        glLoadIdentity()
-
-        # Apply scaling
-        square_vertices = np.dot(scaling_matrix, square_vertices)
-
-        # Draw scaled square
-        draw_square(square_vertices)
-
-        glfw.swap_buffers(window)
-        glfw.poll_events()
-        time.sleep(0.01)
+    while not glfw.window_should_close(win):
+        glClear(GL_COLOR_BUFFER_BIT); glLoadIdentity()
+        square = S @ square
+        draw_square(square)
+        glfw.swap_buffers(win); glfw.poll_events(); time.sleep(0.01)
 
     glfw.terminate()
 
-
-if __name__ == "__main__":
-    main()
+if __name__=="__main__": main()
