@@ -2,28 +2,19 @@ import glfw, sys
 from OpenGL.GL import *
 from OpenGL.GLU import gluOrtho2D
 
-I,L,R,B,T = 0,1,2,4,8
-
-def code(x,y,xm,ym,xM,yM):
-	c=I
-	if x<xm:c|=L
-	elif x>xM:c|=R
-	if y<ym:c|=B
-	elif y>yM:c|=T
-	return c
-
 def clip(x1,y1,x2,y2,xm,ym,xM,yM):
-	c1,c2=code(x1,y1,xm,ym,xM,yM),code(x2,y2,xm,ym,xM,yM)
-	while True:
-		if not(c1|c2): return True,(x1,y1,x2,y2)
-		if c1&c2: return False,None
-		c=c1 or c2
-		if c&T: x,y=x1+(x2-x1)*(yM-y1)/(y2-y1),yM
-		elif c&B: x,y=x1+(x2-x1)*(ym-y1)/(y2-y1),ym
-		elif c&R: y,x=y1+(y2-y1)*(xM-x1)/(x2-x1),xM
-		else:     y,x=y1+(y2-y1)*(xm-x1)/(x2-x1),xm
-		if c==c1: x1,y1,c1=x,y,code(x,y,xm,ym,xM,yM)
-		else:     x2,y2,c2=x,y,code(x,y,xm,ym,xM,yM)
+	dx,dy=x2-x1,y2-y1
+	p=[-dx,dx,-dy,dy]
+	q=[x1-xm,xM-x1,y1-ym,yM-y1]
+	u1,u2=0,1
+	for pi,qi in zip(p,q):
+		if pi==0 and qi<0: return False,None
+		if pi:
+			u=qi/pi
+			if pi<0: u1=max(u1,u)
+			else:    u2=min(u2,u)
+	if u1>u2: return False,None
+	return True,(x1+u1*dx,y1+u1*dy,x1+u2*dx,y1+u2*dy)
 
 def line(a,b,c,d,r,g,b2):
 	glColor3f(r,g,b2)
@@ -32,13 +23,14 @@ def line(a,b,c,d,r,g,b2):
 	glEnd()
 
 def rect(xm,ym,xM,yM):
+	glColor3f(0.2, 0.6, 1.0)
 	glBegin(GL_LINE_LOOP)
 	for p in [(xm,ym),(xM,ym),(xM,yM),(xm,yM)]: glVertex2f(*p)
 	glEnd()
 
 if not glfw.init(): sys.exit()
 w,h=800,600
-win=glfw.create_window(w,h,"Cohen–Sutherland",None,None)
+win=glfw.create_window(w,h,"Liang–Barsky",None,None)
 glfw.make_context_current(win)
 gluOrtho2D(0,w,0,h)
 
